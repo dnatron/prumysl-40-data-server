@@ -78,6 +78,8 @@
                     </div>
                     
                     <div class="mb-3 form-check">
+                        <!-- Hidden field zajistí odeslání "false" když checkbox není zaškrtnutý -->
+                        <input type="hidden" name="enabled" value="false">
                         <input type="checkbox" class="form-check-input" id="enabled" name="enabled" value="true"
                                {% if not device or device.enabled %}checked{% endif %}>
                         <label class="form-check-label" for="enabled">Aktivní (sbírat data)</label>

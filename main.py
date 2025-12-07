@@ -247,9 +247,12 @@ async def device_save(
     port: int = Form(...),
     endpoint_url: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    enabled: bool = Form(True)
+    enabled: str = Form("false")
 ):
     """Uložení zařízení (vytvoření nebo aktualizace)."""
+    # Konverze enabled z řetězce na boolean
+    is_enabled = enabled.lower() == "true"
+    
     with get_session() as session:
         if device_id:
             # Aktualizace existujícího
@@ -263,7 +266,7 @@ async def device_save(
             device.port = port
             device.endpoint_url = endpoint_url
             device.description = description
-            device.enabled = enabled
+            device.enabled = is_enabled
         else:
             # Vytvoření nového
             device = Device(
@@ -273,7 +276,7 @@ async def device_save(
                 port=port,
                 endpoint_url=endpoint_url,
                 description=description,
-                enabled=enabled
+                enabled=is_enabled
             )
             session.add(device)
         
