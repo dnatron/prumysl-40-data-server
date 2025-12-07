@@ -6,7 +6,7 @@ Centrální sběrný server pro průmyslová data s podporou protokolů **OPC UA
 
 | Dashboard | Přidání zařízení | Detail zařízení |
 |-----------|------------------|-----------------|
-| ![Dashboard](img/app01.png) | ![Přidání zařízení](img/app02.png) | ![Detail](img/app03.png) |
+| ![Dashboard](img/app1.png) | ![Přidání zařízení](img/app2.png) | ![Detail](img/app3.png) |
 
 ## 🎯 Funkce
 
