@@ -1,0 +1,35 @@
+<div class="alert alert-info alert-dismissible fade show" role="alert">
+    <strong><i class="bi bi-check-circle me-2"></i>Manuální čtení dokončeno</strong>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    
+    <table class="table table-sm mt-2 mb-0">
+        <thead>
+            <tr>
+                <th>Tag</th>
+                <th>Hodnota</th>
+                <th>Kvalita</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tag_name, (value, quality) in results.items() %}
+            <tr>
+                <td>{{ tag_name }}</td>
+                <td>
+                    {% if value is not none %}
+                    <strong>{{ "%.4f"|format(value) }}</strong>
+                    {% else %}
+                    <span class="text-muted">N/A</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if quality == 'good' %}
+                    <span class="text-success"><i class="bi bi-check-circle"></i></span>
+                    {% else %}
+                    <span class="text-danger"><i class="bi bi-exclamation-triangle"></i> {{ quality }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

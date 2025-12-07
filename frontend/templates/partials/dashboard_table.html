@@ -1,0 +1,95 @@
+<div class="table-responsive">
+    <table class="table table-hover table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Název zařízení</th>
+                <th>Protokol</th>
+                <th>Host:Port</th>
+                <th>Stav</th>
+                {% for tag_name in all_tags %}
+                <th class="text-center">{{ tag_name }}</th>
+                {% endfor %}
+                <th>Poslední aktualizace</th>
+                <th>Akce</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for data in devices_data %}
+            <tr class="{% if not data.device.enabled %}table-secondary{% endif %}">
+                <td>{{ data.device.id }}</td>
+                <td>
+                    <strong>{{ data.device.name }}</strong>
+                    {% if data.device.description %}
+                    <br><small class="text-muted">{{ data.device.description }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if data.device.protocol == 'opcua' %}
+                    <span class="badge bg-info">OPC UA</span>
+                    {% else %}
+                    <span class="badge bg-warning text-dark">Modbus</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <code>{{ data.device.host }}:{{ data.device.port }}</code>
+                </td>
+                <td>
+                    {% if data.device.enabled %}
+                    <span class="badge bg-success">Aktivní</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Neaktivní</span>
+                    {% endif %}
+                </td>
+                {% for tag_name in all_tags %}
+                <td class="text-center">
+                    {% if tag_name in data.values %}
+                        {% set val = data.values[tag_name] %}
+                        {% if val.quality == 'good' %}
+                            {% if val.data_type == 'bool' %}
+                                {% if val.value == 1.0 %}
+                                <span class="badge bg-success">ON</span>
+                                {% else %}
+                                <span class="badge bg-danger">OFF</span>
+                                {% endif %}
+                            {% else %}
+                                <strong>{{ "%.2f"|format(val.value) }}</strong>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-danger" title="Chyba čtení">
+                                <i class="bi bi-exclamation-triangle"></i>
+                            </span>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                {% endfor %}
+                <td>
+                    {% if data.last_update %}
+                    <small>{{ data.last_update.strftime('%H:%M:%S') }}</small>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/device/{{ data.device.id }}" class="btn btn-outline-primary" title="Detail">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="/device/{{ data.device.id }}/edit" class="btn btn-outline-secondary" title="Upravit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form action="/device/{{ data.device.id }}/toggle" method="post" style="display:inline;">
+                            <button type="submit" class="btn btn-outline-{% if data.device.enabled %}warning{% else %}success{% endif %}" 
+                                    title="{% if data.device.enabled %}Deaktivovat{% else %}Aktivovat{% endif %}">
+                                <i class="bi bi-{% if data.device.enabled %}pause{% else %}play{% endif %}"></i>
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

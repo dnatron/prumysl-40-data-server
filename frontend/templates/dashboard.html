@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-speedometer2 me-2"></i>Dashboard</h1>
+    <div>
+        <a href="/device/new" class="btn btn-success">
+            <i class="bi bi-plus-circle me-1"></i>Přidat zařízení
+        </a>
+        <button class="btn btn-outline-primary ms-2" 
+                hx-get="/dashboard-content" 
+                hx-target="#dashboard-table"
+                hx-swap="innerHTML">
+            <i class="bi bi-arrow-clockwise me-1"></i>Obnovit
+        </button>
+    </div>
+</div>
+
+{% if not devices_data %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    Zatím nejsou nakonfigurována žádná zařízení. 
+    <a href="/device/new" class="alert-link">Přidejte první zařízení</a>.
+</div>
+{% else %}
+
+<div id="dashboard-table" 
+     hx-get="/dashboard-content" 
+     hx-trigger="every 5s"
+     hx-swap="innerHTML">
+    {% include "partials/dashboard_table.html" %}
+</div>
+
+{% endif %}
+
+<!-- Legenda -->
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-question-circle me-1"></i>Legenda
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Protokoly</h6>
+                <ul class="list-unstyled">
+                    <li><span class="badge bg-info me-2">OPC UA</span>Open Platform Communications Unified Architecture</li>
+                    <li><span class="badge bg-warning text-dark me-2">Modbus</span>Modbus TCP/IP protokol</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Stavy</h6>
+                <ul class="list-unstyled">
+                    <li><span class="badge bg-success me-2">Aktivní</span>Zařízení je aktivní pro sběr dat</li>
+                    <li><span class="badge bg-secondary me-2">Neaktivní</span>Zařízení je deaktivované</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

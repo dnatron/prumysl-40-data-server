@@ -1,0 +1,121 @@
+/* Custom styles for Data Gateway */
+
+/* Navbar styling */
+.navbar-brand {
+    font-weight: bold;
+}
+
+/* Card shadows */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+/* Table enhancements */
+.table th {
+    white-space: nowrap;
+}
+
+/* Code styling */
+code {
+    background-color: #f8f9fa;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+}
+
+/* Badge improvements */
+.badge {
+    font-weight: 500;
+}
+
+/* Footer positioning */
+html {
+    min-height: 100%;
+    position: relative;
+}
+
+body {
+    margin-bottom: 60px;
+}
+
+.footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 60px;
+}
+
+/* HTMX loading indicator */
+.htmx-request .htmx-indicator {
+    display: inline-block;
+}
+
+.htmx-indicator {
+    display: none;
+}
+
+/* Value display */
+.value-good {
+    color: #198754;
+    font-weight: bold;
+}
+
+.value-bad {
+    color: #dc3545;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .btn-group-sm .btn {
+        padding: 0.2rem 0.4rem;
+    }
+}
+
+/* Tab content scrolling */
+.tab-content {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+/* Sticky table header */
+.table thead.sticky-top th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: white;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.1);
+}
+
+/* Protocol badges */
+.badge.bg-info {
+    background-color: #0dcaf0 !important;
+}
+
+.badge.bg-warning {
+    background-color: #ffc107 !important;
+}
+
+/* Form improvements */
+.form-label {
+    font-weight: 500;
+}
+
+/* Alert animations */
+.alert {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

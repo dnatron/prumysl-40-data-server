@@ -1,0 +1,411 @@
+### 🧠 **Prompt: Vývoj centrálního sběrného serveru pro průmyslová data (Industry 4.0 – Fáze 2)**
+
+Vytvoř **centrální sběrný server**, který se aktivně připojuje k simulovaným nebo skutečným průmyslovým zařízením (PLC) prostřednictvím protokolů **OPC UA** a **Modbus TCP**, pravidelně čte data a ukládá je do lokální databáze. Server bude mít **webové rozhraní** pro správu zdrojů a zobrazení aktuálních i historických hodnot.
+
+#### 🔧 **Technologický stack**
+- **Backend**: Python 3.12 + FastAPI
+- **ORM/Datový model**: SQLModel
+- **Databáze**: SQLite (`data.sqlite`) – **ukládá se zde konfigurace i měření**
+- **Frontend**: Jinja2, Bootstrap 5, HTMX (bez JavaScript frameworku)
+- **Protokoly**:
+  - OPC UA klient: `opcua-asyncio` nebo `freeopcua`
+  - Modbus TCP klient: `pymodbus` (async režim)
+
+#### 🎯 **Hlavní funkce**
+1. **Správa zdrojů dat**:
+   - Uživatel může přidat/editovat/zakázat zdroj (např. „Lis-01“)
+   - Pro každý zdroj specifikuje:
+     - Název
+     - Protokol (`opcua` nebo `modbus`)
+     - Host (`127.0.0.1`)
+     - Port (`4840` pro OPC UA, `5020` pro Modbus)
+     - (u OPC UA) endpoint URL, např. `opc.tcp://127.0.0.1:4840`
+2. **Definice tagů/senzorů**:
+   - Pro každý zdroj lze přidat více tagů:
+     - Název (např. „Teplota oleje“)
+     - Adresa:  
+       - OPC UA: např. `ns=2;s=Teplota`  
+       - Modbus: např. `hr_0` (holding register 0)
+     - Datový typ (`float`, `int`, `bool`)
+3. **Pravidelný sběr dat**:
+   - Každých **5 sekund** (konfigurovatelné) server:
+     - Prochází všechny **aktivní** zdroje
+     - Pro každý tag zavolá odpovídajícího klienta (OPC nebo Modbus)
+     - Načtenou hodnotu uloží do tabulky `Measurement` s časovým razítkem
+4. **Webové rozhraní**:
+   - **Dashboard**: tabulka se **seznamem zdrojů** + poslední známé hodnoty
+   - **Detail zdroje**: stránka s historií měření pro všechny jeho tagy (posledních 100 záznamů)
+   - Možnost **ručně spustit jednorázový čtení** (pro test)
+
+#### 🖥️ **Požadavky na UI**
+- Hlavní stránka (`/`) zobrazuje tabulku:
+  | ID | Název stroje | Protokol | Poslední aktualizace | Teplota | Tlak | Stav |
+  |----|--------------|----------|------------------------|---------|------|------|
+  → Sloupce s hodnotami senzorů se dynamicky generují podle definovaných tagů
+- Každý řádek má tlačítko „Detail“ → přesměruje na `/source/{id}`
+- Na detailu: grafické zobrazení není vyžadováno, stačí tabulka měření
+- Všechny interakce (přidání, spuštění čtení) probíhají přes **HTMX** – bez full-page reloadu
+
+#### 📦 **Složková struktura a popis souborů**
+
+```
+data-gateway/
+│
+├── backend/
+│   ├── main.py                 # FastAPI app: routy pro UI, HTMX handlers, spuštění polleru
+│   ├── models.py               # SQLModel: Source, Tag, Measurement
+│   ├── opc_client.py           # Async funkce pro čtení z OPC UA serveru
+│   ├── modbus_client.py        # Async funkce pro čtení z Modbus TCP serveru
+│   └── poller.py               # Asynchroní smyčka pro pravidelné dotazování zdrojů
+│
+├── frontend/
+│   ├── templates/
+│   │   ├── base.html           # Základní šablona (Bootstrap + HTMX)
+│   │   ├── dashboard.html      # Hlavní přehled zdrojů + poslední hodnoty
+│   │   ├── source_form.html    # Formulář pro přidání/editaci zdroje + tagů
+│   │   └── source_detail.html  # Detail zdroje: historie měření
+│   │
+│   └── static/
+│       └── style.css           # Volitelné vlastní styly
+│
+├── data.sqlite                 # SQLite databáze: obsahuje Source, Tag i Measurement
+├── requirements.txt            # fastapi, uvicorn, sqlmodel, opcua, pymodbus, jinja2, python-multipart
+└── README.md                   # Návod: jak spustit, jak přidat zdroj, jak funguje sběr
+```
+
+#### 📄 **Stručný popis klíčových souborů**
+
+- **`models.py`**  
+  → Definuje:
+  - `Source`: metadata o zdroji (host, port, protokol)
+  - `Tag`: název, adresa, datový typ, vazba na zdroj
+  - `Measurement`: `value` (float), `timestamp`, vazba na tag
+
+- **`poller.py`**  
+  → Asynchroní úloha, která každých `interval` sekund:
+  - Načte všechny aktivní zdroje
+  - Pro každý tag zavolá `read_opcua_value()` nebo `read_modbus_register()`
+  - Uloží výsledek jako `Measurement`
+
+- **`opc_client.py`**  
+  → Funkce: `async read_opcua_value(endpoint: str, node_id: str) -> float`
+
+- **`modbus_client.py`**  
+  → Funkce: `async read_modbus_holding_register(host: str, port: int, reg: int) -> float`
+
+- **`main.py`**  
+  → Obsahuje:
+  - FastAPI instanci
+  - Routy pro renderování šablon
+  - HTMX POST handlery (uložení zdroje, spuštění manuálního čtení)
+  → Při startu aplikace spustí `poller` jako `asyncio.create_task()`
+
+- **Šablony**  
+  → `dashboard.html` dynamicky vytváří sloupce podle tagů (např. pomocí `{% for tag in source.tags %}`)
+
+#### 🚫 **Omezení**
+- Žádné ověřování (auth) – běží lokálně pro vývoj
+- Žádné pokročilé vizualizace (grafy) – pouze tabulky
+- Frekvence sběru pevná na 5 s (pro vývoj)
+
+#### ✅ **Kritérium úspěchu**
+- Spustíš simulátor PLC (fáze 1) na portu 4840 (OPC UA) s tagem „Teplota“
+- Ve sběrném serveru přidáš zdroj „Lis-01“ s OPC UA endpointem `opc.tcp://127.0.0.1:4840`
+- Definuješ tag „Teplota“ s adresou `ns=2;s=Teplota`
+- Po 5 sekundách se v dashboardu zobrazí aktuální hodnota
+- Stejné funguje pro Modbus TCP simulátor
+
+---
+
+ Zde je dodatečný popis ohledně podobnosti sqlmodelu:
+
+Skvělá otázka! Ano, **architektura jako v Kepware KEPServerEX** je přesně to, co potřebuješ – tedy **hierarchickou, flexibilní a protokol-nezávislou strukturu**, kde:
+
+- Každý **zdroj (device/stroj)** má svůj typ protokolu (OPC UA, Modbus, …),
+- Každý zdroj má **seznam tagů (proměnných)** s adresou specifickou pro daný protokol,
+- Tagy mohou mít různé **datové typy** a **metadata**,
+- A vše je **rozšiřitelné** pro další protokoly.
+
+V kontextu **SQLModel + SQLite** (nebo později PostgreSQL) by měl datový model vypadat následovně:
+
+---
+
+### ✅ **Doporučená SQLModel struktura (inspirováno Kepware)**
+
+```python
+from sqlmodel import SQLModel, Field, Relationship
+from typing import List, Optional
+from datetime import datetime
+
+# ───────────────────────────────────────
+# 1. ZDROJ (Device / PLC / Stroj)
+# ───────────────────────────────────────
+class Device(SQLModel, table=True):
+    id: int = Field(default=None, primary_key=True)
+    name: str = Field(index=True, description="Např. 'Lis-01', 'Čerpadlo-A'")
+    protocol: str = Field(description="např. 'opcua', 'modbus'")  # enum v produkci
+    host: str = "127.0.0.1"
+    port: int
+    enabled: bool = True
+    description: Optional[str] = None
+
+    # Vztah k tagům
+    tags: List["Tag"] = Relationship(back_populates="device")
+
+
+# ───────────────────────────────────────
+# 2. TAG (Proměnná / Senzor / Datový bod)
+# ───────────────────────────────────────
+class Tag(SQLModel, table=True):
+    id: int = Field(default=None, primary_key=True)
+    name: str = Field(description="Např. 'Teplota_motoru', 'Stav_RUN'")  # unikátní v rámci zařízení
+    address: str = Field(description="""
+        Protokol-specifická adresa:
+        - OPC UA: 'ns=2;s=Teplota' nebo 'i=2258'
+        - Modbus: 'hr_40001' (holding register 40001),
+                  'co_1' (coil 1),
+                  'ir_30001' (input register)
+    """)
+    data_type: str = Field(default="float", description="float, int, bool, string")
+    description: Optional[str] = None
+    enabled: bool = True
+
+    # Vazba na zařízení
+    device_id: int = Field(foreign_key="device.id")
+    device: Device = Relationship(back_populates="tags")
+
+    # Vztah k měřením
+    measurements: List["Measurement"] = Relationship(back_populates="tag")
+
+
+# ───────────────────────────────────────
+# 3. MĚŘENÍ (Hodnota v čase)
+# ───────────────────────────────────────
+class Measurement(SQLModel, table=True):
+    id: int = Field(default=None, primary_key=True)
+    value: float  # vše se normalizuje na float pro jednoduchost; pro bool: 0/1
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+    # Vazba na tag
+    tag_id: int = Field(foreign_key="tag.id")
+    tag: Tag = Relationship(back_populates="measurements")
+```
+
+---
+
+### 🔍 **Proč takto?**
+
+| Prvek | Výhoda |
+|------|--------|
+| **`Device`** | Reprezentuje fyzické nebo simulované zařízení – odpovídá „Channel → Device“ v Kepware |
+| **`Tag`** | Každý datový bod je nezávisle konfigurovatelný – jako „Tag“ v Kepware |
+| **`address` jako řetězec** | Flexibilní pro jakýkoli protokol – parser se přizpůsobí podle `device.protocol` |
+| **`data_type`** | Umožňuje správné zpracování (např. bool vs. float) i v UI |
+| **`Measurement` oddělený** | Optimalizováno pro časové řady – později snadná migrace na TimescaleDB |
+
+---
+
+### 🧩 **Příklad dat v praxi**
+
+#### Zařízení (Device)
+```json
+{
+  "name": "Lis-01",
+  "protocol": "opcua",
+  "host": "127.0.0.1",
+  "port": 4840
+}
+```
+
+#### Tagy (Tags)
+```json
+[
+  {
+    "name": "Teplota_oleje",
+    "address": "ns=2;s=Lis01.Temperature",
+    "data_type": "float"
+  },
+  {
+    "name": "Stav_RUN",
+    "address": "ns=2;s=Lis01.Running",
+    "data_type": "bool"
+  }
+]
+```
+
+#### Nebo pro Modbus:
+```json
+{
+  "name": "Čerpadlo-B",
+  "protocol": "modbus",
+  "host": "127.0.0.1",
+  "port": 5020
+}
+```
+```json
+[
+  {
+    "name": "Tlak_vstup",
+    "address": "hr_40001",
+    "data_type": "float"
+  },
+  {
+    "name": "Alarm_vysoka_teplota",
+    "address": "co_1",
+    "data_type": "bool"
+  }
+]
+```
+
+> 💡 **Poznámka k Modbus adresám**:  
+> Doporučuji použít prefixy pro jasnost:
+> - `hr_` = holding register (čtení/zápis)
+> - `ir_` = input register (jen čtení)
+> - `co_` = coil (čtení/zápis, bool)
+> - `di_` = discrete input (jen čtení, bool)
+
+---
+
+### ⚙️ **Jak to použije tvůj sběrný server?**
+
+1. Načte všechny `Device` s `enabled=True`
+2. Pro každý `Device`:
+   - Podle `protocol` zvolí klienta (OPC UA nebo Modbus)
+   - Pro každý `Tag` s `enabled=True`:
+     - Převede `address` na formát požadovaný protokolem
+     - Přečte hodnotu
+     - Pokud je `data_type == "bool"`, převede na `0/1` → uloží do `value: float`
+     - Vloží `Measurement(tag_id=..., value=..., timestamp=...)`
+
+---
+
+### 🔄 **Rozšiřitelnost pro budoucnost**
+
+- Chceš přidat **MQTT**? → Přidej `protocol = "mqtt"`, `address = "factory/machine1/temp"`
+- Chceš **vzorkovací interval na úrovni tagu**? → Přidej `scan_rate_sec: int = 5` do `Tag`
+- Chceš **kvalitu dat (Quality)**? → Přidej `quality: str = "good"` do `Measurement`
+
+---
+
+### ✅ Shrnutí
+
+Ano – tento model **naprosto odpovídá přístupu Kepware KEPServerEX**, ale v jednoduché, lightweight formě vhodné pro Python + SQLite vývoj. Je:
+
+- **Protokol-neutrální**
+- **Hierarchický** (Device → Tag → Measurement)
+- **Snadno rozšiřitelný**
+- **Kompatibilní s průmyslovými nástroji** (OPC klienty, Modbus scannery)
+
+
+Zde je upravený Prompt pro  aby bral ohled na podobnost s Kepware KEPServerEX:
+
+Pro centrální sběrný server (fáze 2)**, který plně reflektuje **Kepware-inspirovanou architekturu** s entitami **Device → Tag → Measurement** a podporou pro více protokolů (OPC UA, Modbus) v rámci jednoho systému.
+
+---
+
+### 🧠 **Prompt: Vývoj centrálního sběrného serveru pro průmyslová data (Industry 4.0 – Fáze 2, verze s Kepware-style architekturou)**
+
+Vytvoř **centrální sběrný server**, který se připojuje k simulovaným nebo reálným průmyslovým zařízením prostřednictvím standardních protokolů (**OPC UA**, **Modbus TCP**) a pravidelně sbírá data definovaná jako **tagy**. Architektura musí být **flexibilní, rozšiřitelná a inspirována Kepware KEPServerEX**:  
+každé zařízení (Device) může mít různé tagy s protokol-specifickými adresami, a všechna měření se ukládají s časovým razítkem.
+
+#### 🔧 **Technologický stack**
+- **Backend**: Python 3.12 + FastAPI
+- **ORM**: SQLModel
+- **Databáze**: SQLite (`data.sqlite`) – obsahuje **Device**, **Tag** i **Measurement**
+- **Frontend**: Jinja2 + Bootstrap 5 + HTMX (bez JavaScript frameworku)
+- **Protokoly**:
+  - OPC UA klient: `opcua-asyncio`
+  - Modbus TCP klient: `pymodbus` (async)
+
+---
+
+### 🎯 **Klíčové entity (Kepware-style model)**
+
+1. **Device** – reprezentuje jedno průmyslové zařízení (např. PLC „Lis-01“)
+   - `name`, `protocol` (`opcua` / `modbus`), `host`, `port`, `enabled`
+2. **Tag** – reprezentuje jeden datový bod (senzor, stav, čítač)
+   - `name`, `address` (protokol-specifická: např. `ns=2;s=Teplota` nebo `hr_40001`)
+   - `data_type` (`float`, `int`, `bool`), `enabled`
+   - Vazba na `Device`
+3. **Measurement** – historická hodnota tagu v čase
+   - `value` (normalizováno na `float`), `timestamp`, vazba na `Tag`
+
+---
+
+### ⚙️ **Funkční požadavky**
+
+#### A. Správa zařízení a tagů
+- Uživatel může přidat/upravit/smazat **Device**
+- Pro každé zařízení lze přidat více **Tagů** s:
+  - Názvem (unikátní v rámci zařízení)
+  - Adresou ve formátu:
+    - **OPC UA**: `ns=2;s=Teplota`, `i=2258`
+    - **Modbus**: `hr_40001` (holding register), `co_1` (coil), `ir_30001` (input register)
+  - Datovým typem (ovlivní způsob interpretace a zobrazení)
+
+#### B. Sběr dat
+- Asynchronní **poller** každých **5 sekund**:
+  - Prochází všechny `enabled=True` Device
+  - Pro každý jeho `enabled=True` Tag:
+    - Načte hodnotu pomocí odpovídajícího klienta (OPC UA / Modbus)
+    - Normalizuje bool → `0.0`/`1.0`, int → float
+    - Uloží `Measurement(tag_id=..., value=..., timestamp=...)`
+- Chyby při čtení se logují, ale nezastavují celý cyklus
+
+#### C. Webové rozhraní
+- **Dashboard (`/`)** zobrazuje:
+  - Tabulku **Device** s posledními hodnotami všech jeho tagů  
+    → sloupce: `ID | Název | Protokol | Teplota | Stav_RUN | Poslední aktualizace`
+  - Dynamické sloupce podle definovaných tagů
+- **Detail zařízení (`/device/{id}`)**:
+  - Zobrazí historii měření pro všechny jeho tagy (posledních 100 záznamů)
+- **Formulář pro vytvoření zařízení**:
+  - Volba protokolu → dynamicky načte nápovědu k formátu adresy
+  - Možnost přidat více tagů v jednom formuláři (repeatable section)
+
+#### D. Technické požadavky
+- Všechny operace (uložení, spuštění manuálního čtení) přes **HTMX**
+- Žádné přihlašování – aplikace běží lokálně pro vývoj
+- Data se ukládají do **`data.sqlite`** – včetně měření
+
+---
+
+### 📦 **Složková struktura a stručný popis souborů**
+
+```
+data-gateway/
+│
+├── backend/
+│   ├── main.py                 # FastAPI app: routy, HTMX handlery, spuštění polleru
+│   ├── models.py               # SQLModel: Device, Tag, Measurement (Kepware-style)
+│   ├── opc_client.py           # Async čtení z OPC UA (podle address typu)
+│   ├── modbus_client.py        # Async čtení z Modbus (parsuje hr_/co_/ir_)
+│   └── poller.py               # Asynchroní smyčka pro průběžné dotazování
+│
+├── frontend/
+│   ├── templates/
+│   │   ├── base.html           # Hlavní šablona (Bootstrap + HTMX)
+│   │   ├── dashboard.html      # Přehled zařízení + poslední hodnoty tagů
+│   │   ├── device_form.html    # Formulář pro Device + Tagy
+│   │   └── device_detail.html  # Historie měření pro konkrétní zařízení
+│   └── static/
+│       └── style.css           # Volitelné styly
+│
+├── data.sqlite                 # Jednotná databáze: metadata i měření
+├── requirements.txt            # fastapi, uvicorn, sqlmodel, opcua, pymodbus, jinja2
+└── README.md                   # Návod k použití
+```
+
+---
+
+### ✅ **Kritérium úspěchu**
+- Přidáš Device „Lis-01“ (OPC UA, `127.0.0.1:4840`) se dvěma tagy:  
+  `Teplota` (`ns=2;s=Lis01.Temp`, float) a `RUN` (`ns=2;s=Lis01.Run`, bool)
+- Přidáš Device „Čerpadlo-B“ (Modbus, `127.0.0.1:5020`) s tagy:  
+  `Tlak` (`hr_40001`, float) a `Alarm` (`co_1`, bool)
+- Po spuštění se v dashboardu zobrazují aktuální hodnoty obou zařízení
+- Data se pravidelně ukládají do `Measurement`
+
+---
+
+Tento prompt je nyní **přesně v souladu s průmyslovou praxí** a zároveň optimalizován pro tvůj stack (Python + SQLite + HTMX). Je připraven k použití pro vývoj nebo generování kódu.

@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}{% if device %}Upravit {{ device.name }}{% else %}Nové zařízení{% endif %}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+        {% if device %}
+        <li class="breadcrumb-item"><a href="/device/{{ device.id }}">{{ device.name }}</a></li>
+        <li class="breadcrumb-item active">Upravit</li>
+        {% else %}
+        <li class="breadcrumb-item active">Nové zařízení</li>
+        {% endif %}
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-{% if device %}pencil{% else %}plus-circle{% endif %} me-2"></i>
+                {% if device %}Upravit zařízení: {{ device.name }}{% else %}Přidat nové zařízení{% endif %}
+            </div>
+            <div class="card-body">
+                <form action="/device/save" method="post">
+                    {% if device %}
+                    <input type="hidden" name="device_id" value="{{ device.id }}">
+                    {% endif %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">Název zařízení *</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ device.name if device else '' }}" required
+                                   placeholder="např. Lis-01, Čerpadlo-A">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="protocol" class="form-label">Protokol *</label>
+                            <select class="form-select" id="protocol" name="protocol" required>
+                                <option value="opcua" {% if device and device.protocol == 'opcua' %}selected{% endif %}>
+                                    OPC UA
+                                </option>
+                                <option value="modbus" {% if device and device.protocol == 'modbus' %}selected{% endif %}>
+                                    Modbus TCP
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="host" class="form-label">Host (IP adresa) *</label>
+                            <input type="text" class="form-control" id="host" name="host" 
+                                   value="{{ device.host if device else '127.0.0.1' }}" required
+                                   placeholder="127.0.0.1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="port" class="form-label">Port *</label>
+                            <input type="number" class="form-control" id="port" name="port" 
+                                   value="{{ device.port if device else '4840' }}" required
+                                   placeholder="4840 (OPC UA) / 502 (Modbus)">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3" id="endpoint-group">
+                        <label for="endpoint_url" class="form-label">OPC UA Endpoint URL</label>
+                        <input type="text" class="form-control" id="endpoint_url" name="endpoint_url" 
+                               value="{{ device.endpoint_url if device else '' }}"
+                               placeholder="opc.tcp://127.0.0.1:4840">
+                        <div class="form-text">Volitelné. Pokud není zadáno, bude vygenerováno z host:port.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Popis</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"
+                                  placeholder="Volitelný popis zařízení">{{ device.description if device else '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="enabled" name="enabled" value="true"
+                               {% if not device or device.enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="enabled">Aktivní (sbírat data)</label>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle me-1"></i>
+                            {% if device %}Uložit změny{% else %}Vytvořit zařízení{% endif %}
+                        </button>
+                        <a href="{% if device %}/device/{{ device.id }}{% else %}/{% endif %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle me-1"></i>Zrušit
+                        </a>
+                        {% if device %}
+                        <form action="/device/{{ device.id }}/delete" method="post" class="ms-auto"
+                              onsubmit="return confirm('Opravdu smazat zařízení a všechny jeho tagy a měření?');">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-1"></i>Smazat
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Nápověda -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-question-circle me-2"></i>Nápověda
+            </div>
+            <div class="card-body">
+                <div id="help-opcua">
+                    <h6>OPC UA</h6>
+                    <ul class="small">
+                        <li><strong>Port:</strong> typicky 4840</li>
+                        <li><strong>Endpoint:</strong> opc.tcp://host:port</li>
+                        <li><strong>Formát adresy tagu:</strong>
+                            <ul>
+                                <li><code>ns=2;s=Teplota</code></li>
+                                <li><code>i=2258</code></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+                <div id="help-modbus">
+                    <h6>Modbus TCP</h6>
+                    <ul class="small">
+                        <li><strong>Port:</strong> typicky 502 nebo 5020</li>
+                        <li><strong>Formát adresy tagu:</strong>
+                            <ul>
+                                <li><code>hr_0</code> - Holding Register</li>
+                                <li><code>ir_0</code> - Input Register</li>
+                                <li><code>co_0</code> - Coil (bool)</li>
+                                <li><code>di_0</code> - Discrete Input</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if device %}
+<!-- Sekce pro tagy -->
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-tags me-2"></i>Tagy (datové body)</span>
+    </div>
+    <div class="card-body">
+        {% if tags %}
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Název</th>
+                    <th>Adresa</th>
+                    <th>Datový typ</th>
+                    <th>Stav</th>
+                    <th>Akce</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tag in tags %}
+                <tr class="{% if not tag.enabled %}table-secondary{% endif %}">
+                    <td>
+                        <strong>{{ tag.name }}</strong>
+                        {% if tag.description %}
+                        <br><small class="text-muted">{{ tag.description }}</small>
+                        {% endif %}
+                    </td>
+                    <td><code>{{ tag.address }}</code></td>
+                    <td>{{ tag.data_type }}</td>
+                    <td>
+                        {% if tag.enabled %}
+                        <span class="badge bg-success">Aktivní</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Neaktivní</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <form action="/tag/{{ tag.id }}/toggle" method="post" style="display:inline;">
+                                <button type="submit" class="btn btn-outline-{% if tag.enabled %}warning{% else %}success{% endif %}" title="Toggle">
+                                    <i class="bi bi-{% if tag.enabled %}pause{% else %}play{% endif %}"></i>
+                                </button>
+                            </form>
+                            <form action="/tag/{{ tag.id }}/delete" method="post" style="display:inline;"
+                                  onsubmit="return confirm('Smazat tag a všechna jeho měření?');">
+                                <button type="submit" class="btn btn-outline-danger" title="Smazat">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-3">Zatím nejsou definovány žádné tagy.</p>
+        {% endif %}
+        
+        <!-- Formulář pro přidání tagu -->
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6><i class="bi bi-plus-circle me-1"></i>Přidat nový tag</h6>
+                <form action="/device/{{ device.id }}/tag/add" method="post">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <input type="text" class="form-control form-control-sm" name="tag_name" 
+                                   placeholder="Název (např. Teplota)" required>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control form-control-sm" name="tag_address" 
+                                   placeholder="Adresa (např. ns=2;s=Temp)" required>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select form-select-sm" name="tag_data_type">
+                                <option value="float">float</option>
+                                <option value="int">int</option>
+                                <option value="bool">bool</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control form-control-sm" name="tag_description" 
+                                   placeholder="Popis (volitelné)">
+                        </div>
+                        <div class="col-md-1">
+                            <button type="submit" class="btn btn-success btn-sm w-100">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Dynamické zobrazení endpoint URL pole podle protokolu
+    const protocolSelect = document.getElementById('protocol');
+    const endpointGroup = document.getElementById('endpoint-group');
+    const portInput = document.getElementById('port');
+    
+    function updateFormByProtocol() {
+        const protocol = protocolSelect.value;
+        if (protocol === 'opcua') {
+            endpointGroup.style.display = 'block';
+            if (!portInput.value || portInput.value === '502') {
+                portInput.value = '4840';
+            }
+        } else {
+            endpointGroup.style.display = 'none';
+            if (!portInput.value || portInput.value === '4840') {
+                portInput.value = '502';
+            }
+        }
+    }
+    
+    protocolSelect.addEventListener('change', updateFormByProtocol);
+    updateFormByProtocol();
+</script>
+{% endblock %}
