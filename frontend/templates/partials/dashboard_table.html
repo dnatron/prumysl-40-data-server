@@ -43,8 +43,8 @@
                 </td>
                 {% for tag_name in all_tags %}
                 <td class="text-center">
-                    {% if tag_name in data.values %}
-                        {% set val = data.values[tag_name] %}
+                    {% if tag_name in data['values'] %}
+                        {% set val = data['values'][tag_name] %}
                         {% if val.quality == 'good' %}
                             {% if val.data_type == 'bool' %}
                                 {% if val.value == 1.0 %}
