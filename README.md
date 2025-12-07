@@ -2,6 +2,12 @@
 
 Centrální sběrný server pro průmyslová data s podporou protokolů **OPC UA** a **Modbus TCP**.
 
+## 📸 Screenshots
+
+| Dashboard | Přidání zařízení | Detail zařízení |
+|-----------|------------------|-----------------|
+| ![Dashboard](img/app01.png) | ![Přidání zařízení](img/app02.png) | ![Detail](img/app03.png) |
+
 ## 🎯 Funkce
 
 - **Správa zařízení**: Přidávání, editace a mazání průmyslových zařízení (PLC, senzory)
