@@ -179,7 +179,84 @@ Použijte projekt z Fáze 1 nebo jakýkoliv OPC UA server na portu 4840.
 # nebo použijte pymodbus server
 ```
 
-## ✅ Příklad konfigurace
+## ✅ Rychlý návod: Přidání zařízení a tagů
+
+### Krok 1: OPC UA zařízení (simulátor na portu 4840)
+
+**A) Přidání zařízení:**
+
+1. Otevřete http://localhost:8080
+2. Klikněte na **"Přidat zařízení"**
+3. Vyplňte formulář:
+
+| Pole | Hodnota |
+|------|---------|
+| Název | `Lis-01` |
+| Protokol | `OPC UA` |
+| Host | `127.0.0.1` |
+| Port | `4840` |
+| Endpoint URL | `opc.tcp://127.0.0.1:4840` |
+
+4. Klikněte **"Vytvořit zařízení"**
+
+**B) Přidání tagů:**
+
+Po vytvoření zařízení se dostanete na stránku editace. V sekci "Tagy" přidejte:
+
+| Název | Adresa | Datový typ |
+|-------|--------|------------|
+| Teplota | `ns=2;i=2` | float |
+| Tlak | `ns=2;i=3` | float |
+| Stav_RUN | `ns=2;i=4` | bool |
+
+> 💡 **Tip:** Adresy tagů zjistíte v API simulátoru: `http://localhost:8000/api/tags`
+
+---
+
+### Krok 2: Modbus TCP zařízení (simulátor na portu 5020)
+
+**A) Přidání zařízení:**
+
+1. Na dashboardu klikněte **"Přidat zařízení"**
+2. Vyplňte formulář:
+
+| Pole | Hodnota |
+|------|---------|
+| Název | `Cerpadlo-01` |
+| Protokol | `Modbus TCP` |
+| Host | `127.0.0.1` |
+| Port | `5020` |
+
+4. Klikněte **"Vytvořit zařízení"**
+
+**B) Přidání tagů:**
+
+Modbus simulátor mapuje senzory na **Holding Registry** od adresy 0:
+
+| Název | Adresa | Datový typ | Popis |
+|-------|--------|------------|-------|
+| Teplota | `hr_0` | float | Registry 0-1 (IEEE 754 float) |
+| Tlak | `hr_2` | float | Registry 2-3 |
+| Otacky | `hr_4` | float | Registry 4-5 |
+| Stav | `co_0` | bool | Coil 0 |
+
+**Formát Modbus adres:**
+- `hr_N` - Holding Register na adrese N (float používá 2 registry: N a N+1)
+- `ir_N` - Input Register
+- `co_N` - Coil (boolean)
+- `di_N` - Discrete Input
+
+---
+
+### Krok 3: Ověření sběru dat
+
+1. Po přidání tagů se vraťte na **Dashboard** (/)
+2. Data by se měla zobrazit do 5 sekund
+3. Pro okamžité čtení klikněte na **Detail zařízení** → **"Načíst nyní"**
+
+---
+
+## 📋 Referenční příklady JSON (pro API)
 
 ### OPC UA zařízení
 ```json
@@ -192,23 +269,15 @@ Použijte projekt z Fáze 1 nebo jakýkoliv OPC UA server na portu 4840.
 }
 ```
 
-Tagy:
-- `Teplota` → `ns=2;s=Lis01.Temp` (float)
-- `Stav_RUN` → `ns=2;s=Lis01.Run` (bool)
-
 ### Modbus zařízení
 ```json
 {
-  "name": "Čerpadlo-B",
+  "name": "Cerpadlo-01",
   "protocol": "modbus",
   "host": "127.0.0.1",
-  "port": 502
+  "port": 5020
 }
 ```
-
-Tagy:
-- `Tlak` → `hr_0` (float)
-- `Alarm` → `co_0` (bool)
 
 ## 📝 API Endpointy
 
